@@ -1,0 +1,258 @@
+/*******************************
+***** SECTION 1 - OPTIONS *****
+*******************************/
+
+options {
+
+
+IGNORE_CASE = true;
+
+
+ }
+
+
+/*********************************
+***** SECTION 2 - USER CODE *****
+*********************************/
+
+PARSER_BEGIN(cal)
+
+   import java.io.*;
+   import java.util.*;
+
+
+   public class cal {
+   public static void main(String args[]) throws ParseException, TokenMgrError {
+
+
+   try {
+     cal parser = new cal(new java.io.FileInputStream(args[0]));
+     parser.program();
+     System.out.println("Parse Successful!");
+    }
+    catch (ParseException e) {
+        System.err.println("Parse Exception");
+        throw(e);
+	}
+     catch (TokenMgrError e) {
+	System.err.println("Token Error");
+	 throw(e);
+	}
+
+    catch (FileNotFoundException e) {
+        System.err.println("File " + args[0] + " not found.");
+   }
+  }
+ }
+
+
+PARSER_END(cal)
+
+/*****************************************
+***** SECTION 3 - DEFINITION OF TOKENS ***
+******************************************/
+
+/* Ignore any type of whitespaces and comments */
+SKIP: 
+{
+	< " " | "\t" | "\n" | "\r" | "\r\n" >
+	| < "//" (~["\n","\r"])* ("\n"|"\r"|"\r\n") >
+	| < "/*" (~[])* "*""/" >
+}
+
+
+
+TOKEN : /* OPERATORS */
+{
+  
+  < COMMA : "," >
+| < SEMI_COLON : ";" >
+| < COLON : ":" >
+| < ASSIGN : ":=" >
+| < LBR : "(" >
+| < RBR : ")" >
+| < ADD : "+" >
+| < MINUS : "-" >
+| < NEGATE : "~" >
+| < OR : "|" >
+| < AND : "&" >
+| < EQUALS_TO : "=" >
+| < NOT_EQUALS_TO : "!=" >
+| < LESS_THAN : "< " >
+| < LESS_THAN_EQUALS : "<=" >
+| < GREATER_THAN : ">" >
+| < GREATER_THAN_EQUALS : ">=" >
+
+
+}
+
+
+//RESERVED WORDS
+TOKEN :
+{
+  
+  < VARIABLE : "variable" >
+| < CONSTANT : "constant" >
+| < RETURN : "return" >
+| < INTEGER : "integer" >
+| < BOOLEAN : "boolean" >
+| < VOID : "void" >
+| < MAIN : "main" >
+| < IF : "if" >
+| < ELSE : "else" >
+| < TRUE : "true" >
+| < FALSE : "false" >
+| < WHILE: "while" >
+| < BEGIN : "begin" >
+| < END : "end" >
+| < IS : "is" >
+| < SKP : "skip" >
+
+}
+
+
+
+TOKEN :
+{
+  
+  < #CHAR : [ "a"-"z" ] | [ "A"-"Z"] >
+| < #DIGIT : ["0"-"9"] >
+| < NUMBER : ("-")?["1"-"9"](< DIGIT >)*| "0" >
+| < IDENTIFIER : (< CHAR >) ((< DIGIT >) | (< CHAR >) | "_")* >
+
+}
+
+
+/*********************************
+* SECTION 4 - THE GRAMMAR  RULES *
+*********************************/
+
+void program(): { }
+{
+  ( decl() )* ( function() )* main() < EOF >
+}
+
+
+void decl(): { }
+{
+  ( var_decl() | const_decl() ) < SEMI_COLON >
+}
+
+
+void var_decl(): { }
+{
+  < VARIABLE > < IDENTIFIER > < COLON > type()
+}
+
+
+void const_decl(): { }
+{
+  < CONSTANT > < IDENTIFIER > < COLON > type() < ASSIGN > expression()
+}
+
+
+void function(): { }
+{
+  type() < IDENTIFIER > < LBR > ( parameter() )* < RBR > < IS >
+  ( decl() )*
+  < BEGIN >
+  ( statement() )*
+  < RETURN >   expression()  < SEMI_COLON >
+  < END >
+}
+
+
+void type(): { }
+{
+  < INTEGER > | < BOOLEAN > | < VOID >
+}  
+
+
+void parameter(): { }
+{
+  	<IDENTIFIER> <COLON> type() ( <COMMA> < IDENTIFIER > < COLON > type() )*
+}
+
+
+
+void main(): { }
+{
+  < MAIN >
+    < BEGIN >
+       ( decl() )*
+       ( statement() )*
+  < END >
+}
+
+
+void statement(): { }
+{
+  (LOOKAHEAD(2)
+  < IDENTIFIER > < ASSIGN > expression() < SEMI_COLON >
+
+| arg_caller() <SEMI_COLON >
+
+| < BEGIN > ( statement() )* < END >
+
+| < IF > condition() < BEGIN > ( statement() )* < END >
+
+| < ELSE > <BEGIN > ( statement() )* < END >
+
+| < WHILE > condition() < BEGIN > ( statement() )* < END >
+
+| < SKP > < SEMI_COLON > )
+
+}
+
+
+void arg_caller(): {  }
+{
+     < IDENTIFIER > < LBR > ( arg() )* < RBR >
+}
+
+
+
+
+void expression(): { }
+{
+  ( LOOKAHEAD(2) arg_caller() | fragment() binary_arith_op() )
+
+}
+
+
+void binary_arith_op(): { }
+{
+  ( < ADD > expression() | < MINUS > expression() | {} )
+}
+
+
+void fragment(): { }
+{
+  
+   ( < IDENTIFIER > | < NUMBER > | < TRUE > | < FALSE > | < LBR > expression() < RBR > | {} )
+}
+
+
+
+void condition() : { }
+{
+  ( LOOKAHEAD(2) < LBR > condition() < RBR > comp_op()
+| < NEGATE > condition() 
+| expression() comp_op() )
+}
+
+
+
+void comp_op(): { }
+{
+  ( < EQUALS_TO > condition() | < NOT_EQUALS_TO > condition() 
+| < LESS_THAN > condition() | < LESS_THAN_EQUALS > condition()
+| < GREATER_THAN > condition() | < GREATER_THAN_EQUALS > condition()
+| < OR > condition() | < AND > condition() | {} )
+}
+
+
+void arg() : {}
+{
+  <IDENTIFIER> ( <COMMA> <IDENTIFIER> )*
+}
